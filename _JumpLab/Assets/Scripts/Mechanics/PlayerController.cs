@@ -42,6 +42,18 @@ namespace Platformer.Mechanics
 
         public Bounds Bounds => collider2d.bounds;
 
+#if UNITY_IOS
+
+        [SerializeField] private Vector2 fingerStartPosition;
+        [SerializeField] private Vector2 fingerEndPosition;
+
+        [SerializeField] private float distanceForSwipe = 50f;
+
+        private bool swipedStart = false;
+        private bool swipedEnded= false;
+
+#endif
+
         void Awake()
         {
             health = GetComponent<Health>();
@@ -50,6 +62,8 @@ namespace Platformer.Mechanics
             spriteRenderer = GetComponent<SpriteRenderer>();
             animator = GetComponent<Animator>();
         }
+
+#if UNITY_STANDALONE //|| UNITY_EDITOR
 
         protected override void Update()
         {
@@ -72,6 +86,93 @@ namespace Platformer.Mechanics
             base.Update();
         }
 
+#endif
+
+
+#if UNITY_IOS
+
+        protected override void Update()
+        {
+            float touchMove = 0f;
+
+            swipedStart = false;
+            swipedEnded = false;
+
+            if(Input.touchCount > 0)
+            {
+                // get a touch
+                Touch touch = Input.GetTouch(0);
+
+                // figure out if it's left or right
+                if(touch.position.x < Screen.width / 2)
+                { 
+                    Debug.Log("left touch");
+                    touchMove = -1f;
+                }
+                else if(touch.position.x > Screen.width / 2)
+                {
+                    Debug.Log("right touch");
+                    touchMove = 1f;
+                }
+
+                // determine if a swipe has been occured
+                switch (touch.phase)
+                {
+                    case TouchPhase.Began:
+                        Debug.Log("Touch began");
+                        fingerStartPosition = touch.position;
+                        break;
+
+                    case TouchPhase.Moved:
+                        Debug.Log("TouchMove");
+                        fingerEndPosition = touch.position;
+                        break;
+
+                    case TouchPhase.Ended:
+                        Debug.Log("TouchEnded");
+                        fingerEndPosition = touch.position;
+                        break;
+                }
+
+                float swipeMagnitude = Mathf.Abs(fingerEndPosition.y - fingerStartPosition.y);
+
+                if(swipeMagnitude > distanceForSwipe)
+                {
+                    Debug.Log("Jump!");
+                    if(touch.phase == TouchPhase.Began)
+                    {
+                        swipedStart = true;
+                    }
+                  
+                    if(touch.phase == TouchPhase.Ended)
+                    {
+                        swipedEnded = true;
+                        fingerStartPosition = new Vector2(0, 0);
+                        fingerEndPosition = new Vector2(0, 0);
+                    }
+                }
+            }
+
+            if (controlEnabled)
+            {
+                move.x = touchMove;
+                if (jumpState == JumpState.Grounded && swipedStart == true)
+                    jumpState = JumpState.PrepareToJump;
+                else if (swipedEnded == true)
+                {
+                    stopJump = true;
+                    Schedule<PlayerStopJump>().player = this;
+                }
+            }
+            else
+            {
+                move.x = 0;
+            }
+            UpdateJumpState();
+            base.Update();
+        }
+
+#endif
         void UpdateJumpState()
         {
             jump = false;
