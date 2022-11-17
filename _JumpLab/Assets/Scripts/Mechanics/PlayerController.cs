@@ -63,7 +63,7 @@ namespace Platformer.Mechanics
             animator = GetComponent<Animator>();
         }
 
-#if UNITY_STANDALONE //|| UNITY_EDITOR
+#if UNITY_WEBGL //|| UNITY_EDITOR
 
         protected override void Update()
         {
